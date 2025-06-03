@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   photo-frame-dev:
     build:
