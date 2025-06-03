@@ -1,6 +1,7 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 import shutil
 import os
 from pathlib import Path
@@ -13,111 +14,51 @@ MEDIA_PATH = "static/current"
 os.makedirs("static", exist_ok=True)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
 @app.get("/", response_class=HTMLResponse)
-def get_frame():
-    return """
-    <!DOCTYPE html>
-    <html lang='en'>
-    <head>
-        <meta charset=\"UTF-8\">
-        <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-        <title>Digital Photo Frame</title>
-        <script src=\"https://cdn.tailwindcss.com\"></script>
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
-            html, body {
-                margin: 0;
-                padding: 0;
-                height: 100%;
-                background: black;
-                font-family: 'Fira Code', monospace;
-            }
-        </style>
-    </head>
-    <body class=\"relative flex items-center justify-center overflow-hidden\">
-        <div id=\"container\" class=\"w-full h-full flex items-center justify-center\"></div>
-        <div id=\"clock\" class=\"absolute top-5 right-8 text-white text-3xl drop-shadow-lg bg-black/50 px-4 py-1 rounded-xl\"></div>
-        <div id=\"weather\" class=\"absolute top-5 left-8 text-white text-lg bg-black/40 px-4 py-1 rounded-lg cursor-pointer\">Loading weather...</div>
-        <div id=\"forecast\" class=\"absolute bottom-5 left-1/2 transform -translate-x-1/2 text-white text-sm bg-black/50 px-4 py-2 rounded-lg max-w-3xl whitespace-pre-line text-center hidden\"></div>
+async def get_frame(request: Request):
+    # Read media extension
+    try:
+        with open(f"{MEDIA_PATH}.meta", "r") as f:
+            media_ext = f.read().strip()
+    except FileNotFoundError:
+        media_ext = None
 
-        <script>
-            function updateMedia() {
-                fetch('/static/current.meta')
-                    .then(res => res.text())
-                    .then(ext => {
-                        const container = document.getElementById('container');
-                        const timestamp = `?cacheBust=${Date.now()}`;
-                        const lowerExt = ext.toLowerCase();
-                        if (lowerExt === '.jpg' || lowerExt === '.jpeg' || lowerExt === '.png' || lowerExt === '.gif') {
-                            container.innerHTML = `<img src='/static/current${ext}${timestamp}' class='max-w-full max-h-full object-contain' />`;
-                        } else if (lowerExt === '.mp4') {
-                            container.innerHTML = `<video src='/static/current${ext}${timestamp}' autoplay loop muted class='max-w-full max-h-full object-contain'></video>`;
-                        } else {
-                            container.innerHTML = `<p class='text-white'>Unsupported file type: ${ext}</p>`;
-                        }
-                    });
-            }
+    media_tag = ""
+    if media_ext:
+        if media_ext in ['.jpg', '.jpeg', '.png', '.gif']:
+            media_tag = f"<img src='/static/current{media_ext}' class='max-w-full max-h-full object-contain' />"
+        elif media_ext == '.mp4':
+            media_tag = f"<video src='/static/current{media_ext}' autoplay loop muted class='max-w-full max-h-full object-contain'></video>"
+        else:
+            media_tag = f"<p class='text-white'>Unsupported file type: {media_ext}</p>"
+    else:
+        media_tag = "<p class='text-white text-lg'>No media uploaded yet.</p>"
 
-            function updateClock() {
-                const now = new Date();
-                const hours = now.getHours().toString().padStart(2, '0');
-                const minutes = now.getMinutes().toString().padStart(2, '0');
-                const clock = document.getElementById('clock');
-                clock.textContent = `${hours}:${minutes}`;
-            }
+    # Get weather string
+    try:
+        async with httpx.AsyncClient() as client:
+            weather_response = await client.get("https://wttr.in/?format=%t+%C")
+            weather = weather_response.text.strip()
+    except Exception:
+        weather = "Weather unavailable"
 
-            async function updateWeather() {
-                try {
-                    const res = await fetch("/weather");
-                    const weatherText = await res.text();
-                    document.getElementById("weather").textContent = weatherText;
-                } catch (e) {
-                    document.getElementById("weather").textContent = "Weather unavailable";
-                }
-            }
+    # Get forecast string
+    try:
+        async with httpx.AsyncClient() as client:
+            forecast_response = await client.get("https://wttr.in?format=%l:+%c+%t+%w\n\nForecast:\n%f")
+            print(forecast_response)
+            forecast = forecast_response.text.strip()
+    except Exception:
+        forecast = "Forecast unavailable"
 
-            async function toggleForecast() {
-                const forecastDiv = document.getElementById("forecast");
-                if (forecastDiv.classList.contains("hidden")) {
-                    try {
-                        const res = await fetch("/forecast");
-                        const text = await res.text();
-                        forecastDiv.textContent = text;
-                        forecastDiv.classList.remove("hidden");
-                    } catch (e) {
-                        forecastDiv.textContent = "Forecast unavailable.";
-                        forecastDiv.classList.remove("hidden");
-                    }
-                } else {
-                    forecastDiv.classList.add("hidden");
-                }
-            }
-
-            document.getElementById("weather").addEventListener("click", toggleForecast);
-
-            updateMedia();
-            updateClock();
-            updateWeather();
-            setInterval(updateMedia, 10000);
-            setInterval(updateClock, 1000);
-            setInterval(updateWeather, 600000); // every 10 minutes
-        </script>
-    </body>
-    </html>
-    """
-
-@app.get("/weather", response_class=PlainTextResponse)
-async def proxy_weather():
-    async with httpx.AsyncClient() as client:
-        r = await client.get("https://wttr.in/?format=%t+%C")
-        return r.text
-
-@app.get("/forecast", response_class=PlainTextResponse)
-async def proxy_forecast():
-    async with httpx.AsyncClient() as client:
-        r = await client.get("https://wttr.in?format=%l:+%c+%t+%wNLNLForecast:NL%f")
-        return r.text.replace("NL", "\n")
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "media_tag": media_tag,
+        "weather": weather,
+        "forecast": forecast
+    })
 
 @app.post("/upload")
 async def upload_media(file: UploadFile = File(...)):

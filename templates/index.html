@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Photo Frame</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code&display=swap');
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: black;
+            font-family: 'Fira Code', monospace;
+        }
+    </style>
+</head>
+<body class="relative flex items-center justify-center overflow-hidden">
+    <div id="container" class="w-full h-full flex items-center justify-center">
+        {{ media_tag | safe }}
+    </div>
+    <div id="clock" class="absolute top-5 right-8 text-white text-3xl drop-shadow-lg bg-black/50 px-4 py-1 rounded-xl"></div>
+    <div id="weather" class="absolute top-5 left-8 text-white text-lg bg-black/40 px-4 py-1 rounded-lg cursor-pointer">{{ weather }}</div>
+    <div id="forecast" class="absolute bottom-5 left-1/2 transform -translate-x-1/2 text-white text-sm bg-black/50 px-4 py-2 rounded-lg max-w-3xl whitespace-pre-line text-center hidden">
+        {{ forecast }}
+    </div>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('clock').textContent = `${hours}:${minutes}`;
+        }
+
+        function toggleForecast() {
+            const forecast = document.getElementById('forecast');
+            forecast.classList.toggle("hidden");
+        }
+
+        document.getElementById("weather").addEventListener("click", toggleForecast);
+        updateClock();
+        setInterval(updateClock, 1000);
+    </script>
+</body>
+</html>
