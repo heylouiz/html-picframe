@@ -1,11 +1,6 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-app = FastAPI()
-
-
-from fastapi import Depends, FastAPI
-
 from .routers import home, upload
 
 app = FastAPI()
