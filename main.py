@@ -1,5 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import shutil
@@ -58,6 +58,12 @@ async def get_frame(request: Request):
         "media_tag": media_tag,
         "weather": weather,
         "forecast": forecast
+    })
+
+@app.get("/up", response_class=HTMLResponse)
+async def upload_form(request: Request):
+    return templates.TemplateResponse("up.html", {
+        "request": request,
     })
 
 @app.post("/upload")
