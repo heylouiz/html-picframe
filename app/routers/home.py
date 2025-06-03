@@ -1,22 +1,19 @@
-from fastapi import FastAPI, UploadFile, File, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import APIRouter
+from fastapi import Request
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-import shutil
 import os
-from pathlib import Path
 import httpx
 
-app = FastAPI()
+router = APIRouter()
 
 # Directory to store the uploaded media
 MEDIA_PATH = "static/current"
 os.makedirs("static", exist_ok=True)
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-@app.get("/", response_class=HTMLResponse)
+@router.get("/", response_class=HTMLResponse)
 async def get_frame(request: Request):
     # Read media extension
     try:
@@ -59,30 +56,3 @@ async def get_frame(request: Request):
         "weather": weather,
         "forecast": forecast
     })
-
-@app.get("/up", response_class=HTMLResponse)
-async def upload_form(request: Request):
-    return templates.TemplateResponse("up.html", {
-        "request": request,
-    })
-
-@app.post("/upload")
-async def upload_media(file: UploadFile = File(...)):
-    content_type = file.content_type.lower()
-    print(f"Uploaded content type: {content_type}")
-
-    filename = file.filename.lower()
-    ext = Path(filename).suffix
-
-    if ext in ['.jpg', '.jpeg', '.png', '.gif', '.mp4']:
-        media_file_path = MEDIA_PATH + ext
-        with open(media_file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
-        with open(MEDIA_PATH + ".meta", "w") as metafile:
-            metafile.write(ext)
-
-        return {"status": "uploaded", "type": content_type, "filename": filename}
-    else:
-        return {"error": f"Unsupported file extension: {ext}"}
-
