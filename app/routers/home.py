@@ -2,32 +2,27 @@ from fastapi import APIRouter
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-import os
 import httpx
+
+from ..utils.misc import get_current_media_path
 
 router = APIRouter()
 
-# Directory to store the uploaded media
-MEDIA_PATH = "static/current"
-os.makedirs("static", exist_ok=True)
 
 templates = Jinja2Templates(directory="templates")
 
 @router.get("/", response_class=HTMLResponse)
 async def get_frame(request: Request):
     # Read media extension
-    try:
-        with open(f"{MEDIA_PATH}.meta", "r") as f:
-            media_ext = f.read().strip()
-    except FileNotFoundError:
-        media_ext = None
+    media_path = get_current_media_path()
+    media_ext = media_path.split(".")[-1]
 
     media_tag = ""
     if media_ext:
-        if media_ext in ['.jpg', '.jpeg', '.png', '.gif']:
-            media_tag = f"<img src='/static/current{media_ext}' class='max-w-full max-h-full object-contain' />"
-        elif media_ext == '.mp4':
-            media_tag = f"<video src='/static/current{media_ext}' autoplay loop muted class='max-w-full max-h-full object-contain'></video>"
+        if media_ext in ['jpg', 'jpeg', 'png', 'gif']:
+            media_tag = f"<img src='{media_path}' class='max-w-full max-h-full object-contain' />"
+        elif media_ext == 'mp4':
+            media_tag = f"<video src='{media_path}' autoplay loop muted class='max-w-full max-h-full object-contain'></video>"
         else:
             media_tag = f"<p class='text-white'>Unsupported file type: {media_ext}</p>"
     else:
