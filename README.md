@@ -31,22 +31,7 @@ uvicorn main:app --reload
 
 ### Using Docker Compose (from Docker Hub image)
 
-Create a `docker-compose.yml` file:
-
-```yaml
-version: '3.9'
-
-services:
-  photo-frame:
-    image: heylouiz/photo-frame:latest
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./static:/app/static
-    restart: unless-stopped
-```
-
-Then run:
+Run:
 
 ```bash
 docker-compose up -d
@@ -56,7 +41,7 @@ docker-compose up -d
 
 ```bash
 docker build -t html-picframe .
-docker run -p 8000:8000 -v $(pwd)/static:/app/static html-picframe
+docker run -p 8000:8000 -v $(pwd)/uploads:/app/uploads html-picframe
 ```
 
 ---
