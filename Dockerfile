@@ -22,8 +22,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application code
 COPY . .
 
-# Create static dir if it doesn't exist
-RUN mkdir -p /app/static
+# Create uploads dir if it doesn't exist
+RUN mkdir -p /app/uploads
 
 # Expose port
 EXPOSE 8000
