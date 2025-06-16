@@ -6,6 +6,11 @@ from telegram.ext import MessageHandler, filters
 import httpx
 from io import BytesIO
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Hello from your photo frame bot!")
